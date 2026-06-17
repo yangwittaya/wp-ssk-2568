@@ -135,7 +135,7 @@
           </div>
           <div class="form-group" style="margin:0">
             <label class="form-label">วันที่ตั้งหนี้</label>
-            <input type="date" class="form-control" id="fApDate" />
+            <input type="text" class="form-control" id="fApDate" placeholder="วว/ดด/ปปปป เช่น 09/09/2568" maxlength="10" oninput="thaiDateFormat(this)" />
           </div>
         </div>
         <div class="form-group" style="margin-top:.75rem;margin-bottom:0">
@@ -160,7 +160,7 @@
         <div class="form-row-3">
           <div class="form-group" style="margin:0">
             <label class="form-label">วันที่จ่ายเงิน</label>
-            <input type="date" class="form-control" id="fPayDate" />
+            <input type="text" class="form-control" id="fPayDate" placeholder="วว/ดด/ปปปป เช่น 09/09/2568" maxlength="10" oninput="thaiDateFormat(this)" />
           </div>
           <div class="form-group" style="margin:0">
             <label class="form-label">เลขที่เช็ค / วิธีการจ่าย</label>
@@ -492,6 +492,21 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
   if (e.key === 'n' && e.ctrlKey) { e.preventDefault(); openAddModal(); }
 });
+
+// Thai date auto-format: พิมพ์ตัวเลข → จัดรูปแบบ วว/ดด/ปปปป อัตโนมัติ
+function thaiDateFormat(input) {
+  let v = input.value.replace(/\D/g, ''); // เอาเฉพาะตัวเลข
+  if (v.length > 8) v = v.slice(0, 8);
+  let out = '';
+  if (v.length <= 2) {
+    out = v;
+  } else if (v.length <= 4) {
+    out = v.slice(0,2) + '/' + v.slice(2);
+  } else {
+    out = v.slice(0,2) + '/' + v.slice(2,4) + '/' + v.slice(4);
+  }
+  input.value = out;
+}
 </script>
 </body>
 </html>
