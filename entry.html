@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>บันทึกข้อมูล — กระดาษทำการออนไลน์</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="index.html">
+      <div class="navbar-logo">📋</div>
+      <div class="navbar-title">กระดาษทำการออนไลน์<small>โรงเรียนศรีสะเกษวิทยาลัย 2568</small></div>
+    </a>
+    <ul class="navbar-nav">
+      <li><a href="index.html">🏠 Dashboard</a></li>
+      <li><a href="entry.html" class="active">✏️ บันทึกข้อมูล</a></li>
+      <li><a href="report.html">📊 รายงาน/Export</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="main-content">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>✏️ บันทึกข้อมูลกระดาษทำการ (อปท.8.31.2)</h1>
+    <p><span class="online-dot"></span> Real-time sync — ผู้ตรวจหลายท่านบันทึกพร้อมกันได้</p>
+  </div>
+
+  <!-- Auditor + Category Bar -->
+  <div class="card" style="margin-bottom:1rem">
+    <div class="card-body" style="padding:.875rem 1.25rem">
+      <div class="form-row-4" style="align-items:flex-end;gap:.75rem">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">👤 ชื่อผู้ตรวจสอบ <span class="required">*</span></label>
+          <input type="text" class="form-control" id="auditorName" placeholder="กรอกชื่อ-สกุล" />
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">📂 หมวดรายจ่ายที่ตรวจ</label>
+          <select class="form-control" id="catSelect" onchange="changeCat()"></select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">ประชากรทั้งหมด (รายการ)</label>
+          <input type="number" class="form-control" id="popTotal" placeholder="จำนวน" min="0" />
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="openAddModal()">
+            ➕ เพิ่มรายการใหม่
+          </button>
+        </div>
+      </div>
+      <div style="margin-top:.75rem;font-size:.8rem;color:var(--gray-600)">
+        ขนาดตัวอย่าง (Non-Statistical): &nbsp;
+        <strong id="sampleSizeDisplay">—</strong> รายการ &nbsp;|&nbsp;
+        บันทึกแล้ว: <strong id="entryCountDisplay">0</strong> รายการ &nbsp;|&nbsp;
+        ยอดรวม: <strong id="totalAmountDisplay">0.00</strong> บาท
+      </div>
+    </div>
+  </div>
+
+  <!-- Proc Reference -->
+  <details style="margin-bottom:1rem">
+    <summary class="btn btn-secondary btn-sm" style="cursor:pointer;list-style:none">📌 รายการตรวจสอบ 1–9 (คลิกเพื่อดู)</summary>
+    <div class="card" style="margin-top:.5rem">
+      <div class="card-body" style="padding:.875rem">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem">
+          <div id="procRefList"></div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Data Table -->
+  <div class="card">
+    <div class="card-header">
+      <h2 id="tableTitle">📋 รายการตรวจสอบ</h2>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-secondary btn-sm no-print" onclick="window.location.href='report.html?cat='+currentCat">📊 ดูรายงาน</button>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table class="wp-table" id="entryTable">
+          <thead>
+            <tr>
+              <th rowspan="2" style="min-width:35px">ลำดับ</th>
+              <th rowspan="2" style="min-width:100px">เลขที่<br>ใบผ่านรายการ</th>
+              <th rowspan="2" style="min-width:85px">วันที่<br>ตั้งหนี้</th>
+              <th rowspan="2" style="min-width:160px">รายละเอียด / โครงการ</th>
+              <th rowspan="2" style="min-width:95px">จำนวนเงิน<br>ตั้งหนี้ (บาท)</th>
+              <th rowspan="2" style="min-width:100px">ธนาคาร/<br>เลขที่บัญชี</th>
+              <th rowspan="2" style="min-width:85px">วันที่จ่าย</th>
+              <th rowspan="2" style="min-width:90px">เลขที่เช็ค/<br>วิธีจ่าย</th>
+              <th rowspan="2" style="min-width:95px">จำนวนเงิน<br>ที่จ่าย (บาท)</th>
+              <th rowspan="2" style="min-width:120px">ผู้รับเงิน</th>
+              <th colspan="9" style="background:#2d5fa3">รายการที่ตรวจสอบ</th>
+              <th rowspan="2" style="min-width:80px">ผลการ<br>ตรวจสอบ</th>
+              <th rowspan="2" style="min-width:130px">ข้อสังเกต</th>
+              <th rowspan="2" style="min-width:80px;font-size:.7rem">การดำเนินการ</th>
+            </tr>
+            <tr id="procHeaderRow"></tr>
+          </thead>
+          <tbody id="entryTableBody">
+            <tr><td colspan="22" class="loading"><div class="spinner"></div>กำลังโหลด...</td></tr>
+          </tbody>
+          <tfoot id="entryTableFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">สำนักตรวจเงินแผ่นดินจังหวัดศรีสะเกษ · โรงเรียนศรีสะเกษวิทยาลัย · ปีงบประมาณ 2568</div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="entryModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">➕ เพิ่มรายการตรวจสอบ</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Basic Info -->
+      <div style="background:#f0f4f8;border-radius:8px;padding:.875rem;margin-bottom:1rem">
+        <div style="font-weight:700;font-size:.82rem;color:var(--gray-700);margin-bottom:.6rem">📄 ข้อมูลใบผ่านรายการ</div>
+        <div class="form-row">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">เลขที่ใบผ่านรายการตั้งหนี้ (AP)</label>
+            <input type="text" class="form-control" id="fApNo" placeholder="เช่น AP-2568-001" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">วันที่ตั้งหนี้</label>
+            <input type="date" class="form-control" id="fApDate" />
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:.75rem;margin-bottom:0">
+          <label class="form-label">รายละเอียด / ชื่อโครงการ <span class="required">*</span></label>
+          <input type="text" class="form-control" id="fDetail" placeholder="รายละเอียดรายจ่าย" />
+        </div>
+        <div class="form-row" style="margin-top:.75rem">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">จำนวนเงินตั้งหนี้ (บาท) <span class="required">*</span></label>
+            <input type="number" class="form-control" id="fApAmount" placeholder="0.00" min="0" step="0.01" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">ธนาคาร / เลขที่บัญชี</label>
+            <input type="text" class="form-control" id="fBankInfo" placeholder="เช่น กรุงไทย / 123-4-56789-0" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Info -->
+      <div style="background:#f0fdf4;border-radius:8px;padding:.875rem;margin-bottom:1rem">
+        <div style="font-weight:700;font-size:.82rem;color:var(--gray-700);margin-bottom:.6rem">💳 ข้อมูลการจ่ายเงิน</div>
+        <div class="form-row-3">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">วันที่จ่ายเงิน</label>
+            <input type="date" class="form-control" id="fPayDate" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">เลขที่เช็ค / วิธีการจ่าย</label>
+            <input type="text" class="form-control" id="fCheckNo" placeholder="เช่น 001234 หรือ โอน" />
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">จำนวนเงินที่จ่าย (บาท)</label>
+            <input type="number" class="form-control" id="fPayAmount" placeholder="0.00" min="0" step="0.01" />
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:.75rem;margin-bottom:0">
+          <label class="form-label">จ่ายเงินให้ (ผู้รับเงิน)</label>
+          <input type="text" class="form-control" id="fPayTo" placeholder="ชื่อผู้รับเงิน / ร้านค้า" />
+        </div>
+      </div>
+
+      <!-- Audit Procedures -->
+      <div style="background:#eff6ff;border-radius:8px;padding:.875rem;margin-bottom:1rem">
+        <div style="font-weight:700;font-size:.82rem;color:var(--gray-700);margin-bottom:.6rem">🔍 รายการที่ตรวจสอบ (ใส่ ✓ ✗ N/A)</div>
+        <div class="proc-grid" id="procFormGrid"></div>
+      </div>
+
+      <!-- Result -->
+      <div style="background:#fff7ed;border-radius:8px;padding:.875rem">
+        <div style="font-weight:700;font-size:.82rem;color:var(--gray-700);margin-bottom:.6rem">📋 สรุปผล</div>
+        <div class="form-row">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">ผลการตรวจสอบ</label>
+            <select class="form-control" id="fResult">
+              <option value="">— เลือกผล —</option>
+              <option value="ผ่าน">✓ ผ่าน</option>
+              <option value="มีข้อสังเกต">⚠ มีข้อสังเกต</option>
+              <option value="ไม่ผ่าน">✗ ไม่ผ่าน</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">ชื่อผู้ตรวจสอบ</label>
+            <input type="text" class="form-control" id="fAuditor" placeholder="ชื่อผู้ตรวจสอบ" />
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:.75rem;margin-bottom:0">
+          <label class="form-label">ข้อสังเกต / ข้อตรวจพบ</label>
+          <textarea class="form-control" id="fNote" rows="3" placeholder="บันทึกข้อสังเกตหรือข้อตรวจพบ (ถ้ามี)"></textarea>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveEntry()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+let currentCat = '1';
+let editingId = null;
+let unsubscribe = null;
+let catEntries = [];
+
+// Init category select
+const catSel = document.getElementById('catSelect');
+EXPENSE_CATS.forEach(c => {
+  const opt = document.createElement('option');
+  opt.value = c.no;
+  opt.textContent = `${c.no}. ${c.name}`;
+  catSel.appendChild(opt);
+});
+
+// Init proc reference list
+const refList = document.getElementById('procRefList');
+PROCS.forEach(p => {
+  const div = document.createElement('div');
+  div.style.cssText = 'font-size:.78rem;padding:.3rem .5rem;background:#f0f4f8;border-radius:6px;margin:.15rem';
+  div.innerHTML = `<span style="font-weight:700;color:var(--primary)">${p.no}.</span> ${p.label} <span style="color:var(--gray-400);font-size:.7rem">[${p.assert}]</span>`;
+  refList.appendChild(div);
+});
+
+// Proc header
+const procHRow = document.getElementById('procHeaderRow');
+PROCS.forEach(p => {
+  const th = document.createElement('th');
+  th.style.cssText = 'background:#2d5fa3;min-width:36px;font-size:.7rem';
+  th.textContent = p.no;
+  th.title = p.label;
+  procHRow.appendChild(th);
+});
+
+// Init proc form
+const procGrid = document.getElementById('procFormGrid');
+PROCS.forEach(p => {
+  const div = document.createElement('div');
+  div.className = 'proc-item';
+  div.innerHTML = `
+    <div style="flex:1">
+      <div style="font-size:.75rem;font-weight:700;color:var(--primary)">${p.no}. <span style="font-weight:400;color:var(--gray-700)">${p.label}</span></div>
+      <div style="font-size:.68rem;color:var(--gray-400)">[${p.assert}]</div>
+    </div>
+    <select class="form-control" id="fProc${p.no}" style="width:75px;padding:.25rem .4rem;font-size:.8rem">
+      <option value="">—</option>
+      ${PROC_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('')}
+    </select>`;
+  procGrid.appendChild(div);
+});
+
+// Read URL param
+const params = new URLSearchParams(window.location.search);
+if (params.get('cat')) {
+  currentCat = params.get('cat');
+  catSel.value = currentCat;
+}
+
+// Load auditor name from localStorage
+const savedName = localStorage.getItem('auditorName');
+if (savedName) document.getElementById('auditorName').value = savedName;
+
+changeCat();
+
+function changeCat() {
+  currentCat = catSel.value;
+  const catObj = EXPENSE_CATS.find(c => c.no === currentCat);
+  document.getElementById('tableTitle').textContent = `📋 ${catObj.no}. ${catObj.name} — รายการตรวจสอบ`;
+
+  // Update URL without reload
+  history.replaceState(null, '', `?cat=${currentCat}`);
+
+  // Unsubscribe previous listener
+  if (unsubscribe) unsubscribe();
+
+  unsubscribe = subscribeEntries(currentCat, docs => {
+    catEntries = docs;
+    renderTable(docs);
+    updateSummaryBar(docs);
+  });
+}
+
+function updateSummaryBar(docs) {
+  const pop = Number(document.getElementById('popTotal').value) || 0;
+  // Non-statistical sample size: ROUNDUP((pop / tolerable%) * cf, 0)
+  // Simple rule: recommend min(pop, max(10, ceil(pop * 0.25)))
+  const suggestedSample = pop > 0 ? Math.ceil(Math.min(pop, Math.max(10, pop * 0.25))) : '—';
+  document.getElementById('sampleSizeDisplay').textContent = suggestedSample;
+  document.getElementById('entryCountDisplay').textContent = docs.length;
+  const total = docs.reduce((s, e) => s + (Number(e.apAmount) || 0), 0);
+  document.getElementById('totalAmountDisplay').textContent = formatNum(total);
+}
+
+function renderTable(docs) {
+  const tbody = document.getElementById('entryTableBody');
+  const tfoot = document.getElementById('entryTableFoot');
+
+  if (!docs.length) {
+    tbody.innerHTML = `<tr><td colspan="22"><div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีรายการในหมวดนี้<br><button class="btn btn-primary" onclick="openAddModal()" style="margin-top:.75rem">➕ เพิ่มรายการแรก</button></p></div></td></tr>`;
+    tfoot.innerHTML = '';
+    return;
+  }
+
+  tbody.innerHTML = docs.map((e, i) => {
+    const procCells = PROCS.map(p => {
+      const v = e[`proc${p.no}`] || '';
+      let cls = v === '✓' ? 'tick-pass' : v === '✗' ? 'tick-fail' : 'tick-na';
+      return `<td class="proc-cell"><span class="${cls}">${v || '—'}</span></td>`;
+    }).join('');
+
+    return `<tr>
+      <td class="center">${i + 1}</td>
+      <td>${e.apNo || '—'}</td>
+      <td class="center" style="white-space:nowrap">${e.apDate || '—'}</td>
+      <td style="max-width:180px">${e.detail || '—'}</td>
+      <td class="num-col">${e.apAmount ? formatNum(e.apAmount) : '—'}</td>
+      <td style="font-size:.75rem">${e.bankInfo || '—'}</td>
+      <td class="center" style="white-space:nowrap">${e.payDate || '—'}</td>
+      <td class="center">${e.checkNo || '—'}</td>
+      <td class="num-col">${e.payAmount ? formatNum(e.payAmount) : '—'}</td>
+      <td style="font-size:.78rem">${e.payTo || '—'}</td>
+      ${procCells}
+      <td class="center">${e.result ? `<span class="badge ${resultClass(e.result)}">${e.result}</span>` : '—'}</td>
+      <td style="font-size:.78rem;max-width:130px;word-break:break-word">${e.note || '—'}</td>
+      <td class="center no-print" style="white-space:nowrap">
+        <button class="btn btn-warning btn-sm" onclick="openEditModal('${e.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDelete('${e.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Footer totals
+  const totalAP = docs.reduce((s, e) => s + (Number(e.apAmount) || 0), 0);
+  const totalPay = docs.reduce((s, e) => s + (Number(e.payAmount) || 0), 0);
+  tfoot.innerHTML = `<tr style="background:#e2efda;font-weight:700">
+    <td colspan="4" style="text-align:center;border:1px solid var(--gray-200)">รวม ${docs.length} รายการ</td>
+    <td class="num-col" style="border:1px solid var(--gray-200)">${formatNum(totalAP)}</td>
+    <td colspan="2" style="border:1px solid var(--gray-200)"></td>
+    <td style="border:1px solid var(--gray-200)"></td>
+    <td class="num-col" style="border:1px solid var(--gray-200)">${formatNum(totalPay)}</td>
+    <td colspan="${9 + 3 + 1}" style="border:1px solid var(--gray-200)"></td>
+  </tr>`;
+}
+
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '➕ เพิ่มรายการตรวจสอบ';
+  clearForm();
+  // Pre-fill auditor name
+  const nm = document.getElementById('auditorName').value.trim();
+  if (nm) document.getElementById('fAuditor').value = nm;
+  document.getElementById('entryModal').classList.add('active');
+}
+
+function openEditModal(id) {
+  editingId = id;
+  const e = catEntries.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('modalTitle').textContent = '✏️ แก้ไขรายการ';
+  document.getElementById('fApNo').value     = e.apNo || '';
+  document.getElementById('fApDate').value   = e.apDate || '';
+  document.getElementById('fDetail').value   = e.detail || '';
+  document.getElementById('fApAmount').value = e.apAmount || '';
+  document.getElementById('fBankInfo').value = e.bankInfo || '';
+  document.getElementById('fPayDate').value  = e.payDate || '';
+  document.getElementById('fCheckNo').value  = e.checkNo || '';
+  document.getElementById('fPayAmount').value= e.payAmount || '';
+  document.getElementById('fPayTo').value    = e.payTo || '';
+  document.getElementById('fResult').value   = e.result || '';
+  document.getElementById('fNote').value     = e.note || '';
+  document.getElementById('fAuditor').value  = e.auditorName || '';
+  PROCS.forEach(p => {
+    const sel = document.getElementById(`fProc${p.no}`);
+    if (sel) sel.value = e[`proc${p.no}`] || '';
+  });
+  document.getElementById('entryModal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('entryModal').classList.remove('active');
+  editingId = null;
+}
+
+function clearForm() {
+  ['fApNo','fApDate','fDetail','fApAmount','fBankInfo','fPayDate','fCheckNo','fPayAmount','fPayTo','fResult','fNote','fAuditor'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  PROCS.forEach(p => {
+    const sel = document.getElementById(`fProc${p.no}`);
+    if (sel) sel.value = '';
+  });
+}
+
+async function saveEntry() {
+  const detail = document.getElementById('fDetail').value.trim();
+  if (!detail) { showToast('กรุณากรอกรายละเอียด/โครงการ', 'error'); return; }
+  const apAmount = document.getElementById('fApAmount').value;
+  if (!apAmount) { showToast('กรุณากรอกจำนวนเงินตั้งหนี้', 'error'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = '⏳ กำลังบันทึก...';
+
+  // Save auditor name
+  const audNm = document.getElementById('fAuditor').value.trim() || document.getElementById('auditorName').value.trim();
+  if (audNm) localStorage.setItem('auditorName', audNm);
+
+  const data = {
+    category: currentCat,
+    categoryName: catName(currentCat),
+    apNo:      document.getElementById('fApNo').value.trim(),
+    apDate:    document.getElementById('fApDate').value,
+    detail:    detail,
+    apAmount:  Number(apAmount),
+    bankInfo:  document.getElementById('fBankInfo').value.trim(),
+    payDate:   document.getElementById('fPayDate').value,
+    checkNo:   document.getElementById('fCheckNo').value.trim(),
+    payAmount: Number(document.getElementById('fPayAmount').value) || 0,
+    payTo:     document.getElementById('fPayTo').value.trim(),
+    result:    document.getElementById('fResult').value,
+    note:      document.getElementById('fNote').value.trim(),
+    auditorName: audNm,
+  };
+  PROCS.forEach(p => {
+    data[`proc${p.no}`] = document.getElementById(`fProc${p.no}`).value;
+  });
+
+  try {
+    if (editingId) {
+      await updateEntry(editingId, data);
+      showToast('✅ อัปเดตสำเร็จ', 'success');
+    } else {
+      await addEntry(data);
+      showToast('✅ บันทึกสำเร็จ', 'success');
+    }
+    closeModal();
+  } catch(err) {
+    showToast('❌ เกิดข้อผิดพลาด: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 บันทึก';
+  }
+}
+
+async function confirmDelete(id) {
+  const e = catEntries.find(x => x.id === id);
+  if (!e) return;
+  if (!confirm(`ยืนยันลบรายการ: ${e.detail || e.apNo || id} ?`)) return;
+  try {
+    await deleteEntry(id);
+    showToast('🗑 ลบรายการแล้ว', 'success');
+  } catch(err) {
+    showToast('❌ ลบไม่ได้: ' + err.message, 'error');
+  }
+}
+
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type === 'success' ? 'toast-success' : type === 'error' ? 'toast-error' : ''}`;
+  setTimeout(() => { t.className = ''; }, 3000);
+}
+
+// Close modal on backdrop click
+document.getElementById('entryModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('entryModal')) closeModal();
+});
+
+// Keyboard shortcut
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'n' && e.ctrlKey) { e.preventDefault(); openAddModal(); }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>กระดาษทำการออนไลน์ — ร.ร.ศรีสะเกษวิทยาลัย 2568</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="index.html">
+      <div class="navbar-logo">📋</div>
+      <div class="navbar-title">
+        กระดาษทำการออนไลน์
+        <small>โรงเรียนศรีสะเกษวิทยาลัย ปีงบประมาณ 2568</small>
+      </div>
+    </a>
+    <ul class="navbar-nav">
+      <li><a href="index.html" class="active">🏠 Dashboard</a></li>
+      <li><a href="entry.html">✏️ บันทึกข้อมูล</a></li>
+      <li><a href="report.html">📊 รายงาน/Export</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- Main -->
+<div class="main-content">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>📋 Dashboard — ภาพรวมการตรวจสอบ</h1>
+    <p>
+      สำนักตรวจเงินแผ่นดินจังหวัดศรีสะเกษ &nbsp;|&nbsp;
+      อปท.8.31.2 &nbsp;|&nbsp;
+      <span class="online-dot"></span> ข้อมูลแบบ Real-time
+    </p>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card" style="border-left-color:#6366f1">
+      <div class="s-num" id="statTotal">—</div>
+      <div class="s-label">รายการทั้งหมด</div>
+      <div class="s-sub">ทุกหมวดรายจ่าย</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#059669">
+      <div class="s-num" id="statPass">—</div>
+      <div class="s-label">ผ่านการตรวจ</div>
+      <div class="s-sub">รายการที่ผ่าน ✓</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#d97706">
+      <div class="s-num" id="statRemark">—</div>
+      <div class="s-label">มีข้อสังเกต</div>
+      <div class="s-sub">รายการที่ต้องติดตาม</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#dc2626">
+      <div class="s-num" id="statFail">—</div>
+      <div class="s-label">ไม่ผ่าน</div>
+      <div class="s-sub">รายการที่มีปัญหา</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#0891b2">
+      <div class="s-num" id="statAmount">—</div>
+      <div class="s-label">ยอดรวมที่ตรวจ (บาท)</div>
+      <div class="s-sub">จำนวนเงินตั้งหนี้</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#7c3aed">
+      <div class="s-num" id="statCatDone">—</div>
+      <div class="s-label">หมวดที่บันทึกแล้ว</div>
+      <div class="s-sub">จาก 9 หมวดรายจ่าย</div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="toolbar">
+    <span style="font-weight:600;color:var(--gray-700)">เริ่มต้นบันทึกข้อมูล:</span>
+    <div id="quickCatBtns" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
+    <div class="toolbar-right">
+      <a href="report.html" class="btn btn-success">📊 ดูรายงานทั้งหมด</a>
+    </div>
+  </div>
+
+  <!-- Category Summary Table -->
+  <div class="card">
+    <div class="card-header">
+      <h2>📂 สรุปตามหมวดรายจ่าย</h2>
+      <span id="lastUpdate" style="font-size:.75rem;color:var(--gray-400)"></span>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table class="wp-table">
+          <thead>
+            <tr>
+              <th>ที่</th>
+              <th>หมวดรายจ่าย</th>
+              <th>รายการที่ตรวจ</th>
+              <th>ยอดรวมตั้งหนี้ (บาท)</th>
+              <th>ผ่าน</th>
+              <th>มีข้อสังเกต</th>
+              <th>ไม่ผ่าน</th>
+              <th>ความคืบหน้า</th>
+              <th>การดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody id="catSummaryBody">
+            <tr><td colspan="9" class="loading"><div class="spinner"></div>กำลังโหลด...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Entries -->
+  <div class="card">
+    <div class="card-header">
+      <h2>🕐 รายการล่าสุด (10 รายการ)</h2>
+      <a href="entry.html" class="btn btn-primary btn-sm">+ เพิ่มรายการ</a>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table class="wp-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>หมวด</th>
+              <th>เลขที่ใบผ่านรายการ</th>
+              <th>วันที่</th>
+              <th>รายละเอียด</th>
+              <th>จำนวนเงิน (บาท)</th>
+              <th>ผล</th>
+              <th>ผู้ตรวจ</th>
+            </tr>
+          </thead>
+          <tbody id="recentBody">
+            <tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remarks List -->
+  <div class="card" id="remarksCard" style="display:none">
+    <div class="card-header" style="background:#fef3c7">
+      <h2 style="color:#92400e">⚠️ รายการที่มีข้อสังเกต / ไม่ผ่าน</h2>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table class="wp-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>หมวด</th>
+              <th>เลขที่ใบผ่านรายการ</th>
+              <th>รายละเอียด</th>
+              <th>จำนวนเงิน</th>
+              <th>ผล</th>
+              <th>ข้อสังเกต</th>
+            </tr>
+          </thead>
+          <tbody id="remarksBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    สำนักตรวจเงินแผ่นดินจังหวัดศรีสะเกษ · โรงเรียนศรีสะเกษวิทยาลัย · ปีงบประมาณ 2568 · อปท.8.31.2
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Firebase + App Script -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+// Quick cat buttons
+const qBtns = document.getElementById('quickCatBtns');
+EXPENSE_CATS.forEach(c => {
+  const btn = document.createElement('a');
+  btn.href = `entry.html?cat=${c.no}`;
+  btn.className = 'btn btn-secondary btn-sm';
+  btn.textContent = `${c.no}. ${c.name}`;
+  qBtns.appendChild(btn);
+});
+
+// Subscribe real-time
+let allEntries = [];
+subscribeAll(entries => {
+  allEntries = entries;
+  renderDashboard(entries);
+});
+
+function renderDashboard(entries) {
+  // Stats
+  const total = entries.length;
+  const pass = entries.filter(e => e.result === 'ผ่าน').length;
+  const remark = entries.filter(e => e.result === 'มีข้อสังเกต').length;
+  const fail = entries.filter(e => e.result === 'ไม่ผ่าน').length;
+  const totalAmt = entries.reduce((s, e) => s + (Number(e.apAmount) || 0), 0);
+  const catsDone = new Set(entries.map(e => e.category)).size;
+
+  document.getElementById('statTotal').textContent = total.toLocaleString();
+  document.getElementById('statPass').textContent = pass.toLocaleString();
+  document.getElementById('statRemark').textContent = remark.toLocaleString();
+  document.getElementById('statFail').textContent = fail.toLocaleString();
+  document.getElementById('statAmount').textContent = formatNum(totalAmt);
+  document.getElementById('statCatDone').textContent = `${catsDone}/9`;
+
+  // Category summary
+  const tbody = document.getElementById('catSummaryBody');
+  if (entries.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="loading"><div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีข้อมูล — คลิก "บันทึกข้อมูล" เพื่อเริ่มต้น</p></div></td></tr>`;
+  } else {
+    tbody.innerHTML = EXPENSE_CATS.map(c => {
+      const rows = entries.filter(e => e.category === c.no);
+      const amt = rows.reduce((s, e) => s + (Number(e.apAmount) || 0), 0);
+      const p = rows.filter(e => e.result === 'ผ่าน').length;
+      const rm = rows.filter(e => e.result === 'มีข้อสังเกต').length;
+      const f = rows.filter(e => e.result === 'ไม่ผ่าน').length;
+      const pct = rows.length ? Math.round((p / rows.length) * 100) : 0;
+      return `<tr>
+        <td class="center">${c.no}</td>
+        <td><strong>${c.name}</strong></td>
+        <td class="center">${rows.length ? rows.length : '<span class="badge badge-gray">ยังไม่มี</span>'}</td>
+        <td class="num-col">${rows.length ? formatNum(amt) : '—'}</td>
+        <td class="center">${p > 0 ? `<span class="badge badge-success">✓ ${p}</span>` : '—'}</td>
+        <td class="center">${rm > 0 ? `<span class="badge badge-warning">⚠ ${rm}</span>` : '—'}</td>
+        <td class="center">${f > 0 ? `<span class="badge badge-danger">✗ ${f}</span>` : '—'}</td>
+        <td>
+          ${rows.length ? `<div style="background:var(--gray-200);border-radius:4px;height:8px;overflow:hidden"><div style="background:${pct===100?'#059669':pct>50?'#d97706':'#3b82f6'};height:100%;width:${pct}%;transition:.3s"></div></div><small style="font-size:.7rem;color:var(--gray-400)">${pct}%</small>` : '<span style="font-size:.75rem;color:var(--gray-400)">ยังไม่เริ่ม</span>'}
+        </td>
+        <td class="center">
+          <a href="entry.html?cat=${c.no}" class="btn btn-primary btn-sm">✏️ บันทึก</a>
+          <a href="report.html?cat=${c.no}" class="btn btn-secondary btn-sm">📊 ดู</a>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Recent entries (last 10)
+  const recent = [...entries].reverse().slice(0, 10);
+  const rBody = document.getElementById('recentBody');
+  rBody.innerHTML = recent.length ? recent.map((e, i) => `
+    <tr>
+      <td class="center" style="font-size:.75rem;color:var(--gray-400)">${i+1}</td>
+      <td><span class="badge badge-info">${e.category}. ${catName(e.category)}</span></td>
+      <td>${e.apNo || '—'}</td>
+      <td class="center" style="white-space:nowrap">${e.apDate || '—'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.detail || '—'}</td>
+      <td class="num-col">${e.apAmount ? formatNum(e.apAmount) : '—'}</td>
+      <td class="center">${e.result ? `<span class="badge ${resultClass(e.result)}">${e.result}</span>` : '—'}</td>
+      <td style="font-size:.78rem;color:var(--gray-600)">${e.auditorName || '—'}</td>
+    </tr>`).join('') :
+    `<tr><td colspan="8" class="loading"><span style="color:var(--gray-400)">ยังไม่มีรายการ</span></td></tr>`;
+
+  // Remarks
+  const issues = entries.filter(e => e.result && e.result !== 'ผ่าน');
+  const rCard = document.getElementById('remarksCard');
+  rCard.style.display = issues.length ? '' : 'none';
+  if (issues.length) {
+    document.getElementById('remarksBody').innerHTML = issues.map((e, i) => `
+      <tr>
+        <td class="center">${i+1}</td>
+        <td><span class="badge badge-info">${catName(e.category)}</span></td>
+        <td>${e.apNo || '—'}</td>
+        <td>${e.detail || '—'}</td>
+        <td class="num-col">${formatNum(e.apAmount)}</td>
+        <td class="center"><span class="badge ${resultClass(e.result)}">${e.result}</span></td>
+        <td style="font-size:.82rem;color:#92400e">${e.note || '—'}</td>
+      </tr>`).join('');
+  }
+
+  document.getElementById('lastUpdate').textContent = 'อัปเดตล่าสุด: ' + new Date().toLocaleTimeString('th-TH');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายงาน — กระดาษทำการออนไลน์</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  /* Report-specific overrides */
+  .report-section { margin-bottom: 2rem; }
+  .section-divider { border: none; border-top: 2px solid var(--primary); margin: 1.5rem 0; }
+  @media print {
+    .report-section { page-break-inside: avoid; }
+    .print-section { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar no-print">
+  <div class="navbar-inner">
+    <a class="navbar-brand" href="index.html">
+      <div class="navbar-logo">📋</div>
+      <div class="navbar-title">กระดาษทำการออนไลน์<small>โรงเรียนศรีสะเกษวิทยาลัย 2568</small></div>
+    </a>
+    <ul class="navbar-nav">
+      <li><a href="index.html">🏠 Dashboard</a></li>
+      <li><a href="entry.html">✏️ บันทึกข้อมูล</a></li>
+      <li><a href="report.html" class="active">📊 รายงาน/Export</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="main-content">
+
+  <!-- Print Header (visible only on print) -->
+  <div class="print-header">
+    <h1>สำนักตรวจเงินแผ่นดินจังหวัดศรีสะเกษ</h1>
+    <h2>กระดาษทำการตรวจสอบการเบิกจ่ายเงินบำรุงการศึกษา (อปท.8.31.2)</h2>
+    <p>หน่วยรับตรวจ: โรงเรียนศรีสะเกษวิทยาลัย &nbsp;|&nbsp; ปีงบประมาณ 2568</p>
+    <p id="printCatLabel"></p>
+    <p>วันที่พิมพ์: <span id="printDate"></span></p>
+  </div>
+
+  <!-- Page Header -->
+  <div class="page-header no-print">
+    <h1>📊 รายงานกระดาษทำการ (Export)</h1>
+    <p>สำนักตรวจเงินแผ่นดินจังหวัดศรีสะเกษ · โรงเรียนศรีสะเกษวิทยาลัย · ปีงบประมาณ 2568</p>
+  </div>
+
+  <!-- Export Toolbar -->
+  <div class="card no-print" style="margin-bottom:1rem">
+    <div class="card-body" style="padding:.875rem 1.25rem">
+      <div style="display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap">
+        <div class="form-group" style="margin:0;min-width:220px">
+          <label class="form-label">📂 กรองหมวดรายจ่าย</label>
+          <select class="form-control" id="filterCat" onchange="applyFilter()">
+            <option value="">ทุกหมวด</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;min-width:150px">
+          <label class="form-label">📋 กรองผลการตรวจ</label>
+          <select class="form-control" id="filterResult" onchange="applyFilter()">
+            <option value="">ทุกผล</option>
+            <option value="ผ่าน">✓ ผ่าน</option>
+            <option value="มีข้อสังเกต">⚠ มีข้อสังเกต</option>
+            <option value="ไม่ผ่าน">✗ ไม่ผ่าน</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-left:auto">
+          <button class="btn btn-success" onclick="exportExcel()">📥 Export Excel (.xlsx)</button>
+          <button class="btn btn-warning" onclick="exportPDF()">📄 Export PDF / พิมพ์</button>
+          <button class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+        </div>
+      </div>
+      <div style="margin-top:.6rem;font-size:.8rem;color:var(--gray-600)" id="filterInfo">กำลังโหลด...</div>
+    </div>
+  </div>
+
+  <!-- Summary Card -->
+  <div class="card report-section no-print">
+    <div class="card-header">
+      <h2>📈 สรุปภาพรวมการตรวจสอบ</h2>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table class="wp-table" id="summaryTable">
+          <thead>
+            <tr>
+              <th>ที่</th>
+              <th>หมวดรายจ่าย</th>
+              <th>รายการ</th>
+              <th>ยอดรวม (บาท)</th>
+              <th>ผ่าน</th>
+              <th>มีข้อสังเกต</th>
+              <th>ไม่ผ่าน</th>
+              <th>ผู้ตรวจ</th>
+            </tr>
+          </thead>
+          <tbody id="summaryBody">
+            <tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main WP Table — print-ready -->
+  <div class="card report-section" id="wpReportCard">
+    <div class="card-header">
+      <h2 id="reportTableTitle">📋 กระดาษทำการรายรายการ (อปท.8.31.2)</h2>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table class="wp-table" id="reportTable">
+          <thead>
+            <tr>
+              <th rowspan="2">ลำดับ</th>
+              <th rowspan="2">หมวด</th>
+              <th rowspan="2">เลขที่<br>ใบผ่านรายการ</th>
+              <th rowspan="2">วันที่</th>
+              <th rowspan="2">รายละเอียด</th>
+              <th rowspan="2">จำนวนเงิน<br>ตั้งหนี้ (บาท)</th>
+              <th rowspan="2">วันที่จ่าย</th>
+              <th rowspan="2">วิธีจ่าย/เช็ค</th>
+              <th rowspan="2">จำนวนจ่าย<br>(บาท)</th>
+              <th rowspan="2">ผู้รับเงิน</th>
+              <th colspan="9" style="background:#2d5fa3">รายการตรวจสอบ</th>
+              <th rowspan="2">ผลการ<br>ตรวจสอบ</th>
+              <th rowspan="2">ข้อสังเกต</th>
+              <th rowspan="2" class="no-print">ผู้ตรวจ</th>
+            </tr>
+            <tr id="reportProcHeaderRow"></tr>
+          </thead>
+          <tbody id="reportBody">
+            <tr><td colspan="22" class="loading"><div class="spinner"></div>กำลังโหลด...</td></tr>
+          </tbody>
+          <tfoot id="reportFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sign Block (print) -->
+  <div class="print-sign-block" style="display:none" id="printSignBlock">
+    <div class="print-sign-box">
+      <p>ผู้จัดทำกระดาษทำการ</p>
+      <p style="margin-top:1cm">ชื่อ .................................................................</p>
+      <p style="margin-top:.3cm">ตำแหน่ง ..............................................................</p>
+      <p style="margin-top:.3cm">วันที่ .................................................................</p>
+    </div>
+    <div class="print-sign-box">
+      <p>ผู้สอบทาน</p>
+      <p style="margin-top:1cm">ชื่อ .................................................................</p>
+      <p style="margin-top:.3cm">ตำแหน่ง ..............................................................</p>
+      <p style="margin-top:.3cm">วันที่ .................................................................</p>
+    </div>
+  </div>
+
+  <!-- Findings Section -->
+  <div class="card report-section" id="findingsCard" style="display:none">
+    <div class="card-header" style="background:#fef3c7">
+      <h2 style="color:#92400e">⚠️ ข้อตรวจพบและข้อเสนอแนะ</h2>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table class="wp-table" id="findingsTable">
+          <thead>
+            <tr>
+              <th>ที่</th>
+              <th>หมวด</th>
+              <th>เลขที่ใบผ่าน</th>
+              <th>รายละเอียด</th>
+              <th>จำนวนเงิน</th>
+              <th>ผล</th>
+              <th>ข้อสังเกต / ข้อตรวจพบ</th>
+              <th>ผู้ตรวจ</th>
+            </tr>
+          </thead>
+          <tbody id="findingsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer no-print">
+    สำนักตรวจเงินแผ่นดินจังหวัดศรีสะเกษ · โรงเรียนศรีสะเกษวิทยาลัย · ปีงบประมาณ 2568 · อปท.8.31.2
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+let allDocs = [];
+let filteredDocs = [];
+
+// Init filter selects
+const filterCatEl = document.getElementById('filterCat');
+EXPENSE_CATS.forEach(c => {
+  const opt = document.createElement('option');
+  opt.value = c.no; opt.textContent = `${c.no}. ${c.name}`;
+  filterCatEl.appendChild(opt);
+});
+
+// Read URL param
+const params = new URLSearchParams(window.location.search);
+if (params.get('cat')) filterCatEl.value = params.get('cat');
+
+// Proc header
+const phRow = document.getElementById('reportProcHeaderRow');
+PROCS.forEach(p => {
+  const th = document.createElement('th');
+  th.style.cssText = 'background:#2d5fa3;min-width:32px;font-size:.7rem';
+  th.textContent = p.no; th.title = p.label;
+  phRow.appendChild(th);
+});
+
+// Print setup
+document.getElementById('printDate').textContent = new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+
+// Load data
+subscribeAll(docs => {
+  allDocs = docs;
+  applyFilter();
+});
+
+function applyFilter() {
+  const cat = filterCatEl.value;
+  const res = document.getElementById('filterResult').value;
+  filteredDocs = allDocs.filter(e => (!cat || e.category === cat) && (!res || e.result === res));
+  renderAll(filteredDocs);
+}
+
+function renderAll(docs) {
+  // Filter info
+  const totalAmt = docs.reduce((s, e) => s + (Number(e.apAmount) || 0), 0);
+  document.getElementById('filterInfo').textContent =
+    `แสดง ${docs.length} รายการ | ยอดรวม ${formatNum(totalAmt)} บาท | ` +
+    `ผ่าน ${docs.filter(e=>e.result==='ผ่าน').length} | มีข้อสังเกต ${docs.filter(e=>e.result==='มีข้อสังเกต').length} | ไม่ผ่าน ${docs.filter(e=>e.result==='ไม่ผ่าน').length}`;
+
+  // Print label
+  const catFilter = filterCatEl.value;
+  document.getElementById('printCatLabel').textContent = catFilter ?
+    `หมวดรายจ่าย: ${catFilter}. ${catName(catFilter)}` : 'ทุกหมวดรายจ่าย';
+
+  // Update title
+  document.getElementById('reportTableTitle').textContent = catFilter ?
+    `📋 กระดาษทำการ: ${catFilter}. ${catName(catFilter)} (อปท.8.31.2)` :
+    '📋 กระดาษทำการรายรายการทั้งหมด (อปท.8.31.2)';
+
+  // Summary table
+  renderSummary(allDocs);
+  // Main table
+  renderReportTable(docs);
+  // Findings
+  renderFindings(docs);
+}
+
+function renderSummary(docs) {
+  const tbody = document.getElementById('summaryBody');
+  const rows = EXPENSE_CATS.map(c => {
+    const rows = docs.filter(e => e.category === c.no);
+    const amt = rows.reduce((s, e) => s + (Number(e.apAmount) || 0), 0);
+    const auditors = [...new Set(rows.map(e => e.auditorName).filter(Boolean))].join(', ') || '—';
+    return `<tr>
+      <td class="center">${c.no}</td>
+      <td><strong>${c.name}</strong></td>
+      <td class="center">${rows.length || '—'}</td>
+      <td class="num-col">${rows.length ? formatNum(amt) : '—'}</td>
+      <td class="center">${rows.filter(e=>e.result==='ผ่าน').length || '—'}</td>
+      <td class="center">${rows.filter(e=>e.result==='มีข้อสังเกต').length || '—'}</td>
+      <td class="center">${rows.filter(e=>e.result==='ไม่ผ่าน').length || '—'}</td>
+      <td style="font-size:.75rem">${auditors}</td>
+    </tr>`;
+  });
+  // Grand total
+  const grandAmt = docs.reduce((s, e) => s + (Number(e.apAmount) || 0), 0);
+  rows.push(`<tr style="background:#c6efce;font-weight:700">
+    <td colspan="2" class="center">รวมทั้งสิ้น</td>
+    <td class="center">${docs.length}</td>
+    <td class="num-col">${formatNum(grandAmt)}</td>
+    <td class="center">${docs.filter(e=>e.result==='ผ่าน').length}</td>
+    <td class="center">${docs.filter(e=>e.result==='มีข้อสังเกต').length}</td>
+    <td class="center">${docs.filter(e=>e.result==='ไม่ผ่าน').length}</td>
+    <td>—</td>
+  </tr>`);
+  tbody.innerHTML = rows.join('');
+}
+
+function renderReportTable(docs) {
+  const tbody = document.getElementById('reportBody');
+  const tfoot = document.getElementById('reportFoot');
+
+  if (!docs.length) {
+    tbody.innerHTML = `<tr><td colspan="22"><div class="empty-state"><div class="empty-icon">📭</div><p>ไม่มีข้อมูลตามเงื่อนไข</p></div></td></tr>`;
+    tfoot.innerHTML = '';
+    return;
+  }
+
+  // Group by category for sub-headers
+  const catFilter = filterCatEl.value;
+  let html = '';
+  let grandTotalAP = 0, grandTotalPay = 0, seq = 1;
+
+  if (catFilter) {
+    // Single category view
+    docs.forEach((e, i) => {
+      grandTotalAP  += Number(e.apAmount)  || 0;
+      grandTotalPay += Number(e.payAmount) || 0;
+      html += entryRow(e, i+1);
+    });
+  } else {
+    // All categories with section headers
+    EXPENSE_CATS.forEach(c => {
+      const rows = docs.filter(e => e.category === c.no);
+      if (!rows.length) return;
+      html += `<tr style="background:#2E75B6"><td colspan="22" style="font-weight:700;color:white;padding:.5rem .75rem;font-size:.85rem">
+        📂 ${c.no}. ${c.name} (${rows.length} รายการ)
+      </td></tr>`;
+      let catAP = 0, catPay = 0;
+      rows.forEach((e, i) => {
+        catAP  += Number(e.apAmount)  || 0;
+        catPay += Number(e.payAmount) || 0;
+        grandTotalAP  += Number(e.apAmount)  || 0;
+        grandTotalPay += Number(e.payAmount) || 0;
+        html += entryRow(e, seq++);
+      });
+      // Subtotal
+      html += `<tr style="background:#e2efda;font-weight:700">
+        <td colspan="5" class="center" style="border:1px solid var(--gray-200)">รวม ${c.name} (${rows.length} รายการ)</td>
+        <td class="num-col" style="border:1px solid var(--gray-200)">${formatNum(catAP)}</td>
+        <td colspan="2" style="border:1px solid var(--gray-200)"></td>
+        <td class="num-col" style="border:1px solid var(--gray-200)">${formatNum(catPay)}</td>
+        <td colspan="${9 + 3}" style="border:1px solid var(--gray-200)"></td>
+      </tr>`;
+    });
+  }
+  tbody.innerHTML = html;
+
+  // Grand total footer
+  tfoot.innerHTML = `<tr style="background:#c6efce;font-weight:700">
+    <td colspan="5" class="center" style="border:1px solid #999">รวมทั้งสิ้น (${docs.length} รายการ)</td>
+    <td class="num-col" style="border:1px solid #999">${formatNum(grandTotalAP)}</td>
+    <td colspan="2" style="border:1px solid #999"></td>
+    <td class="num-col" style="border:1px solid #999">${formatNum(grandTotalPay)}</td>
+    <td colspan="${9 + 3 + 1}" style="border:1px solid #999"></td>
+  </tr>`;
+}
+
+function entryRow(e, i) {
+  const procs = PROCS.map(p => {
+    const v = e[`proc${p.no}`] || '';
+    const cls = v === '✓' ? 'tick-pass' : v === '✗' ? 'tick-fail' : 'tick-na';
+    return `<td class="proc-cell"><span class="${cls}">${v || '—'}</span></td>`;
+  }).join('');
+  return `<tr>
+    <td class="center">${i}</td>
+    <td class="center" style="font-size:.72rem"><span class="badge badge-info">${e.category}</span></td>
+    <td>${e.apNo || '—'}</td>
+    <td class="center" style="white-space:nowrap;font-size:.78rem">${e.apDate || '—'}</td>
+    <td style="max-width:180px;font-size:.8rem">${e.detail || '—'}</td>
+    <td class="num-col">${e.apAmount ? formatNum(e.apAmount) : '—'}</td>
+    <td class="center" style="white-space:nowrap;font-size:.78rem">${e.payDate || '—'}</td>
+    <td class="center;font-size:.78rem">${e.checkNo || '—'}</td>
+    <td class="num-col">${e.payAmount ? formatNum(e.payAmount) : '—'}</td>
+    <td style="font-size:.75rem;max-width:110px">${e.payTo || '—'}</td>
+    ${procs}
+    <td class="center">${e.result ? `<span class="badge ${resultClass(e.result)}">${e.result}</span>` : '—'}</td>
+    <td style="font-size:.75rem;max-width:120px;word-break:break-word">${e.note || '—'}</td>
+    <td class="no-print" style="font-size:.72rem;color:var(--gray-400)">${e.auditorName || '—'}</td>
+  </tr>`;
+}
+
+function renderFindings(docs) {
+  const issues = docs.filter(e => e.result && e.result !== 'ผ่าน');
+  const card = document.getElementById('findingsCard');
+  card.style.display = issues.length ? '' : 'none';
+  if (issues.length) {
+    document.getElementById('findingsBody').innerHTML = issues.map((e, i) => `
+      <tr>
+        <td class="center">${i+1}</td>
+        <td><span class="badge badge-info">${catName(e.category)}</span></td>
+        <td>${e.apNo || '—'}</td>
+        <td>${e.detail || '—'}</td>
+        <td class="num-col">${formatNum(e.apAmount)}</td>
+        <td class="center"><span class="badge ${resultClass(e.result)}">${e.result}</span></td>
+        <td style="font-size:.8rem;color:#92400e">${e.note || '—'}</td>
+        <td style="font-size:.75rem">${e.auditorName || '—'}</td>
+      </tr>`).join('');
+  }
+}
+
+/* ── Export Excel ── */
+function exportExcel() {
+  if (!filteredDocs.length) { showToast('ไม่มีข้อมูลสำหรับ Export', 'error'); return; }
+  showToast('⏳ กำลังสร้างไฟล์ Excel...', 'info');
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet: Summary
+  const sumData = [
+    ['สำนักตรวจเงินแผ่นดินจังหวัดศรีสะเกษ'],
+    ['กระดาษทำการตรวจสอบการเบิกจ่ายเงินบำรุงการศึกษา (อปท.8.31.2)'],
+    ['หน่วยรับตรวจ: โรงเรียนศรีสะเกษวิทยาลัย  ปีงบประมาณ 2568'],
+    [],
+    ['สรุปตามหมวดรายจ่าย'],
+    ['ที่','หมวดรายจ่าย','รายการ','ยอดรวม (บาท)','ผ่าน','มีข้อสังเกต','ไม่ผ่าน'],
+  ];
+  EXPENSE_CATS.forEach(c => {
+    const rows = allDocs.filter(e => e.category === c.no);
+    const amt = rows.reduce((s, e) => s + (Number(e.apAmount) || 0), 0);
+    sumData.push([c.no, c.name, rows.length, amt,
+      rows.filter(e=>e.result==='ผ่าน').length,
+      rows.filter(e=>e.result==='มีข้อสังเกต').length,
+      rows.filter(e=>e.result==='ไม่ผ่าน').length]);
+  });
+  const grandAmt = allDocs.reduce((s, e) => s + (Number(e.apAmount) || 0), 0);
+  sumData.push(['', 'รวมทั้งสิ้น', allDocs.length, grandAmt,
+    allDocs.filter(e=>e.result==='ผ่าน').length,
+    allDocs.filter(e=>e.result==='มีข้อสังเกต').length,
+    allDocs.filter(e=>e.result==='ไม่ผ่าน').length]);
+  const wsSummary = XLSX.utils.aoa_to_sheet(sumData);
+  wsSummary['!cols'] = [{wch:6},{wch:30},{wch:10},{wch:18},{wch:8},{wch:12},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'สรุป');
+
+  // Sheet: WP per category
+  EXPENSE_CATS.forEach(c => {
+    const rows = filteredDocs.filter(e => e.category === c.no);
+    if (!rows.length) return;
+    const headers = ['ลำดับ','เลขที่ใบผ่านรายการ','วันที่ตั้งหนี้','รายละเอียด',
+      'จำนวนเงินตั้งหนี้','ธนาคาร/บัญชี','วันที่จ่าย','เลขที่เช็ค/วิธีจ่าย',
+      'จำนวนเงินที่จ่าย','ผู้รับเงิน',
+      ...PROCS.map(p => `${p.no}.${p.label.substring(0,10)}`),
+      'ผลการตรวจสอบ','ข้อสังเกต','ผู้ตรวจสอบ'];
+    const data = [
+      ['สำนักตรวจเงินแผ่นดินจังหวัดศรีสะเกษ'],
+      ['กระดาษทำการตรวจสอบการเบิกจ่าย — อปท.8.31.2'],
+      [`หน่วยรับตรวจ: โรงเรียนศรีสะเกษวิทยาลัย  |  หมวด: ${c.no}. ${c.name}  |  ปีงบประมาณ 2568`],
+      [],
+      headers,
+      ...rows.map((e, i) => [
+        i+1, e.apNo||'', e.apDate||'', e.detail||'',
+        Number(e.apAmount)||0, e.bankInfo||'', e.payDate||'', e.checkNo||'',
+        Number(e.payAmount)||0, e.payTo||'',
+        ...PROCS.map(p => e[`proc${p.no}`]||''),
+        e.result||'', e.note||'', e.auditorName||''
+      ]),
+      [],
+      ['', '', '', 'รวม',
+        rows.reduce((s,e)=>s+(Number(e.apAmount)||0),0),'','','',
+        rows.reduce((s,e)=>s+(Number(e.payAmount)||0),0)]
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [
+      {wch:5},{wch:15},{wch:12},{wch:30},{wch:16},{wch:18},{wch:12},{wch:16},{wch:16},{wch:20},
+      ...PROCS.map(()=>({wch:10})),
+      {wch:12},{wch:30},{wch:16}
+    ];
+    const sheetName = `${c.no}-${c.name}`.substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  // Sheet: Findings
+  const issues = filteredDocs.filter(e => e.result && e.result !== 'ผ่าน');
+  if (issues.length) {
+    const findData = [
+      ['ข้อตรวจพบและข้อเสนอแนะ'],
+      ['ที่','หมวด','เลขที่ใบผ่าน','รายละเอียด','จำนวนเงิน','ผล','ข้อสังเกต','ผู้ตรวจ'],
+      ...issues.map((e, i) => [i+1, catName(e.category), e.apNo||'', e.detail||'', Number(e.apAmount)||0, e.result||'', e.note||'', e.auditorName||''])
+    ];
+    const wsFinding = XLSX.utils.aoa_to_sheet(findData);
+    wsFinding['!cols'] = [{wch:5},{wch:20},{wch:15},{wch:35},{wch:16},{wch:12},{wch:40},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, wsFinding, 'ข้อตรวจพบ');
+  }
+
+  const catLabel = filterCatEl.value ? `-${filterCatEl.value}` : '-ทั้งหมด';
+  const today = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `กระดาษทำการ-อปท8.31.2${catLabel}-${today}.xlsx`);
+  showToast('✅ Export Excel สำเร็จ', 'success');
+}
+
+/* ── Export PDF / Print ── */
+function exportPDF() {
+  document.getElementById('printSignBlock').style.display = 'grid';
+  document.getElementById('printDate').textContent = new Date().toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'});
+  window.print();
+  setTimeout(() => {
+    document.getElementById('printSignBlock').style.display = 'none';
+  }, 1000);
+}
+
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type === 'success' ? 'toast-success' : type === 'error' ? 'toast-error' : ''}`;
+  setTimeout(() => { t.className = ''; }, 3500);
+}
+</script>
+</body>
+</html>
