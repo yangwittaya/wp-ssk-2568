@@ -179,7 +179,13 @@
 
       <!-- Audit Procedures -->
       <div style="background:#eff6ff;border-radius:8px;padding:.875rem;margin-bottom:1rem">
-        <div style="font-weight:700;font-size:.82rem;color:var(--gray-700);margin-bottom:.6rem">🔍 รายการที่ตรวจสอบ (ใส่ ✓ ✗ N/A)</div>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
+          <div style="font-weight:700;font-size:.82rem;color:var(--gray-700)">🔍 รายการที่ตรวจสอบ (ใส่ ✓ ✗ N/A)</div>
+          <button type="button" class="btn btn-success btn-sm" onclick="setAllProcs('✓')" style="font-size:.78rem;padding:.2rem .6rem">✓ เลือกทั้งหมด</button>
+          <button type="button" class="btn btn-danger btn-sm" onclick="setAllProcs('✗')" style="font-size:.78rem;padding:.2rem .6rem">✗ ไม่ผ่านทั้งหมด</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="setAllProcs('N/A')" style="font-size:.78rem;padding:.2rem .6rem">N/A ทั้งหมด</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="setAllProcs('')" style="font-size:.78rem;padding:.2rem .6rem">ล้างทั้งหมด</button>
+        </div>
         <div class="proc-grid" id="procFormGrid"></div>
       </div>
 
@@ -492,6 +498,14 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
   if (e.key === 'n' && e.ctrlKey) { e.preventDefault(); openAddModal(); }
 });
+
+// เลือกทุกรายการตรวจสอบพร้อมกัน
+function setAllProcs(val) {
+  PROCS.forEach(p => {
+    const sel = document.getElementById(`fProc${p.no}`);
+    if (sel) sel.value = val;
+  });
+}
 
 // Thai date auto-format: พิมพ์ตัวเลข → จัดรูปแบบ วว/ดด/ปปปป อัตโนมัติ
 function thaiDateFormat(input) {
