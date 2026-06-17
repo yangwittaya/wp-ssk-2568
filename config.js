@@ -59,10 +59,17 @@ const COL_ENTRIES = "wpEntries";
 
 // ===== Firestore helpers =====
 async function getEntries(categoryNo = null) {
-  let q = db.collection(COL_ENTRIES).orderBy("createdAt", "asc");
-  if (categoryNo) q = db.collection(COL_ENTRIES).where("category", "==", categoryNo).orderBy("createdAt", "asc");
+  let q = categoryNo
+    ? db.collection(COL_ENTRIES).where("category", "==", categoryNo)
+    : db.collection(COL_ENTRIES);
   const snap = await q.get();
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  docs.sort((a, b) => {
+    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+    return ta - tb;
+  });
+  return docs;
 }
 
 async function addEntry(data) {
@@ -82,19 +89,43 @@ async function deleteEntry(id) {
 }
 
 function subscribeEntries(categoryNo, callback) {
-  let q = db.collection(COL_ENTRIES).orderBy("createdAt", "asc");
-  if (categoryNo) q = db.collection(COL_ENTRIES).where("category", "==", categoryNo).orderBy("createdAt", "asc");
-  return q.onSnapshot(snap => {
-    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    callback(docs);
-  });
+  // ใช้ where อย่างเดียว แล้ว sort client-side เพื่อไม่ต้องสร้าง Composite Index
+  let q = categoryNo
+    ? db.collection(COL_ENTRIES).where("category", "==", categoryNo)
+    : db.collection(COL_ENTRIES);
+  return q.onSnapshot(
+    snap => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => {
+        const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+        const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+        return ta - tb;
+      });
+      callback(docs);
+    },
+    err => {
+      console.error('Firestore error:', err);
+      callback([]);
+    }
+  );
 }
 
 function subscribeAll(callback) {
-  return db.collection(COL_ENTRIES).orderBy("createdAt", "asc")
-    .onSnapshot(snap => {
-      callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+  return db.collection(COL_ENTRIES).onSnapshot(
+    snap => {
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => {
+        const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+        const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+        return ta - tb;
+      });
+      callback(docs);
+    },
+    err => {
+      console.error('Firestore error:', err);
+      callback([]);
+    }
+  );
 }
 
 // ===== Utility =====
