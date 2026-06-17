@@ -13,6 +13,16 @@
   @media print {
     .report-section { page-break-inside: avoid; }
     .print-section { page-break-before: always; }
+    #auditSummaryBlock, #procLegendBlock { display: block !important; }
+    #summaryText {
+      border: 1px solid #ccc !important;
+      background: white !important;
+      resize: none !important;
+      min-height: 4cm;
+      font-size: .9rem;
+      line-height: 1.8;
+    }
+    #legendTable th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
   }
 </style>
 </head>
@@ -143,6 +153,47 @@
     </div>
   </div>
 
+  <!-- Audit Summary Block -->
+  <div class="card report-section" id="auditSummaryBlock">
+    <div class="card-header" style="background:#eff6ff;border-left:4px solid #3b82f6">
+      <h2 style="color:#1e40af">📝 สรุปผลการตรวจสอบภาพรวม</h2>
+      <span style="font-size:.78rem;color:var(--gray-500)" class="no-print">กรอกข้อความสรุปผลก่อนพิมพ์</span>
+    </div>
+    <div class="card-body" style="padding:1rem">
+      <div class="no-print" style="margin-bottom:.5rem;font-size:.8rem;color:var(--gray-500)">
+        ตัวอย่าง: "จากการตรวจสอบรายการเบิกจ่ายหมวด... จำนวน ... รายการ พบว่า..."
+      </div>
+      <textarea id="summaryText" class="form-control" rows="6"
+        placeholder="บันทึกสรุปผลการตรวจสอบภาพรวมของหมวดรายจ่ายนี้ เช่น ผลการตรวจสอบโดยรวม ข้อสังเกต ข้อเสนอแนะ..."
+        style="width:100%;font-size:.9rem;line-height:1.8;resize:vertical"></textarea>
+    </div>
+  </div>
+
+  <!-- Proc Legend Block -->
+  <div class="card report-section" id="procLegendBlock">
+    <div class="card-header" style="background:#f8fafc">
+      <h2 style="color:var(--gray-700);font-size:.95rem">📋 คำอธิบายรายการที่ตรวจสอบ</h2>
+    </div>
+    <div class="card-body" style="padding:.75rem 1rem">
+      <table class="wp-table" id="legendTable" style="font-size:.82rem">
+        <thead>
+          <tr>
+            <th style="width:40px;background:#f1f5f9;color:var(--gray-700)">ที่</th>
+            <th style="background:#f1f5f9;color:var(--gray-700)">รายการที่ตรวจสอบ</th>
+            <th style="width:90px;background:#f1f5f9;color:var(--gray-700)">Assertion</th>
+          </tr>
+        </thead>
+        <tbody id="legendBody"></tbody>
+      </table>
+      <div style="margin-top:.6rem;font-size:.75rem;color:var(--gray-500)">
+        <strong>หมายเหตุสัญลักษณ์:</strong>&nbsp;
+        <span style="color:#059669;font-weight:700">✓</span> = ถูกต้อง / ผ่าน &nbsp;|&nbsp;
+        <span style="color:#dc2626;font-weight:700">✗</span> = ไม่ถูกต้อง / ไม่ผ่าน &nbsp;|&nbsp;
+        <span style="color:var(--gray-500);font-weight:700">N/A</span> = ไม่เกี่ยวข้อง / ไม่ตรวจสอบ
+      </div>
+    </div>
+  </div>
+
   <!-- Sign Block (print) -->
   <div class="print-sign-block" style="display:none" id="printSignBlock">
     <div class="print-sign-box">
@@ -222,6 +273,14 @@ PROCS.forEach(p => {
 
 // Print setup
 document.getElementById('printDate').textContent = new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+
+// Build legend table
+document.getElementById('legendBody').innerHTML = PROCS.map(p => `
+  <tr>
+    <td class="center" style="font-weight:700;color:#2d5fa3">${p.no}</td>
+    <td>${p.label}</td>
+    <td class="center" style="font-size:.72rem;color:var(--gray-500)">${p.assert}</td>
+  </tr>`).join('');
 
 // Load data
 subscribeAll(docs => {
