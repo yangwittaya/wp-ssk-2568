@@ -47,9 +47,12 @@
           <label class="form-label">ประชากรทั้งหมด (รายการ)</label>
           <input type="number" class="form-control" id="popTotal" placeholder="จำนวน" min="0" />
         </div>
-        <div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="openAddModal()">
             ➕ เพิ่มรายการใหม่
+          </button>
+          <button class="btn btn-success" onclick="openImportModal()">
+            📥 นำเข้าข้อมูล (Batch)
           </button>
         </div>
       </div>
@@ -217,6 +220,50 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
       <button class="btn btn-primary" id="saveBtn" onclick="saveEntry()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- Batch Import Modal -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <h3>📥 นำเข้าข้อมูลหลายรายการ (Batch Import)</h3>
+      <button class="modal-close" onclick="closeImportModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#eff6ff;border-radius:8px;padding:.875rem;margin-bottom:1rem;font-size:.82rem;color:#1e40af">
+        <strong>วิธีใช้:</strong> ส่งรูปเอกสาร (2 แผ่น/ชุด) ในแชทให้ผมอ่าน → ผมสร้าง JSON ให้ → วาง JSON ในช่องด้านล่าง → กด "นำเข้า"
+      </div>
+      <div style="margin-bottom:.5rem;font-size:.82rem;color:var(--gray-600)">
+        วางข้อมูล JSON ที่ได้รับจาก Claude:
+      </div>
+      <textarea id="importJson" class="form-control" rows="14"
+        placeholder='วาง JSON ที่นี่ เช่น:
+[
+  {
+    "apNo": "401/2568",
+    "apDate": "19/05/2568",
+    "detail": "ซื้อครุภัณฑ์...",
+    "apAmount": 72000,
+    "bankInfo": "กรุงไทย เลขที่ 311-6-03127-4",
+    "payDate": "19/05/2568",
+    "checkNo": "",
+    "payAmount": 71327.10,
+    "payTo": "บริษัท จตุรโชค กรุ๊ป จำกัด",
+    "proc1":"✓","proc2":"✓","proc3":"✓","proc4":"✓","proc5":"✓",
+    "proc6":"✓","proc7":"✓","proc8":"✓","proc9":"✓",
+    "result": "ผ่าน",
+    "note": ""
+  }
+]'
+        style="font-size:.78rem;font-family:monospace;line-height:1.5"></textarea>
+      <div id="importPreview" style="margin-top:.75rem;font-size:.82rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeImportModal()">ยกเลิก</button>
+      <button class="btn btn-secondary" onclick="previewImport()">🔍 ตรวจสอบข้อมูล</button>
+      <button class="btn btn-success" id="importBtn" onclick="runBatchImport()">📥 นำเข้าทั้งหมด</button>
     </div>
   </div>
 </div>
@@ -498,6 +545,83 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
   if (e.key === 'n' && e.ctrlKey) { e.preventDefault(); openAddModal(); }
 });
+
+// ── Batch Import ──
+function openImportModal() {
+  document.getElementById('importModal').classList.add('active');
+  document.getElementById('importPreview').innerHTML = '';
+}
+function closeImportModal() {
+  document.getElementById('importModal').classList.remove('active');
+}
+
+function parseImportJson() {
+  const raw = document.getElementById('importJson').value.trim();
+  if (!raw) throw new Error('ไม่มีข้อมูล JSON');
+  const data = JSON.parse(raw);
+  if (!Array.isArray(data)) throw new Error('JSON ต้องเป็น Array [ { ... }, { ... } ]');
+  return data;
+}
+
+function previewImport() {
+  const prev = document.getElementById('importPreview');
+  try {
+    const data = parseImportJson();
+    prev.innerHTML = `
+      <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:.75rem">
+        <strong style="color:#166534">✅ ข้อมูลถูกต้อง — พบ ${data.length} รายการ:</strong>
+        <ul style="margin:.5rem 0 0 1rem;font-size:.8rem;color:#166534">
+          ${data.map((e,i)=>`<li>${i+1}. ${e.detail||'(ไม่มีรายละเอียด)'} — ${formatNum(e.apAmount)} บาท — ${e.result||'(ไม่มีผล)'}</li>`).join('')}
+        </ul>
+      </div>`;
+  } catch(err) {
+    prev.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:.75rem;color:#991b1b">❌ JSON ผิดรูปแบบ: ${err.message}</div>`;
+  }
+}
+
+async function runBatchImport() {
+  const btn = document.getElementById('importBtn');
+  const prev = document.getElementById('importPreview');
+  let data;
+  try { data = parseImportJson(); } catch(err) {
+    prev.innerHTML = `<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:.75rem;color:#991b1b">❌ ${err.message}</div>`;
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังนำเข้า...';
+  const audNm = document.getElementById('auditorName').value.trim();
+  let ok = 0, fail = 0;
+  for (const item of data) {
+    try {
+      const entry = {
+        category:     currentCat,
+        categoryName: catName(currentCat),
+        apNo:         item.apNo    || '',
+        apDate:       item.apDate  || '',
+        detail:       item.detail  || '',
+        apAmount:     Number(item.apAmount)  || 0,
+        bankInfo:     item.bankInfo || '',
+        payDate:      item.payDate  || '',
+        checkNo:      item.checkNo  || '',
+        payAmount:    Number(item.payAmount) || 0,
+        payTo:        item.payTo   || '',
+        result:       item.result  || '',
+        note:         item.note    || '',
+        auditorName:  item.auditorName || audNm,
+      };
+      PROCS.forEach(p => { entry[`proc${p.no}`] = item[`proc${p.no}`] || ''; });
+      await addEntry(entry);
+      ok++;
+    } catch(e) { fail++; }
+  }
+  btn.disabled = false;
+  btn.textContent = '📥 นำเข้าทั้งหมด';
+  prev.innerHTML = `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:.75rem;color:#166534">
+    ✅ นำเข้าสำเร็จ ${ok} รายการ${fail?` | ❌ ล้มเหลว ${fail} รายการ`:''}
+  </div>`;
+  showToast(`✅ นำเข้าสำเร็จ ${ok} รายการ`, 'success');
+  if (ok > 0) setTimeout(() => closeImportModal(), 2000);
+}
 
 // เลือกทุกรายการตรวจสอบพร้อมกัน
 function setAllProcs(val) {
