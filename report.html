@@ -167,7 +167,10 @@
   <div class="card report-section" id="auditSummaryBlock">
     <div class="card-header" style="background:#eff6ff;border-left:4px solid #3b82f6">
       <h2 style="color:#1e40af">📝 สรุปผลการตรวจสอบภาพรวม</h2>
-      <span style="font-size:.78rem;color:var(--gray-500)" class="no-print">กรอกข้อความสรุปผลก่อนพิมพ์</span>
+      <div class="no-print" style="display:flex;align-items:center;gap:.75rem">
+        <span id="summaryStatus" style="font-size:.75rem;color:var(--gray-400)"></span>
+        <button class="btn btn-primary btn-sm" onclick="saveSummary()">💾 บันทึกสรุปผล + ลายมือชื่อ</button>
+      </div>
     </div>
     <div class="card-body" style="padding:1rem">
       <div class="no-print" style="margin-bottom:.5rem;font-size:.8rem;color:var(--gray-500)">
@@ -325,6 +328,7 @@ function applyFilter() {
   const res = document.getElementById('filterResult').value;
   filteredDocs = allDocs.filter(e => (!cat || e.category === cat) && (!res || e.result === res));
   renderAll(filteredDocs);
+  loadSummary(cat);
 }
 
 function renderAll(docs) {
@@ -579,6 +583,49 @@ function exportExcel() {
 function exportPDF() {
   document.getElementById('printDate').textContent = new Date().toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'});
   window.print();
+}
+
+/* ── Summary & Signature Save/Load ── */
+const COL_SUMMARY = 'wpSummary';
+
+async function saveSummary() {
+  const cat = filterCatEl.value || 'all';
+  const data = {
+    summaryText: document.getElementById('summaryText').value,
+    signName1:   document.getElementById('signName1').value,
+    signPos1:    document.getElementById('signPos1').value,
+    signDate1:   document.getElementById('signDate1').value,
+    signName2:   document.getElementById('signName2').value,
+    signPos2:    document.getElementById('signPos2').value,
+    signDate2:   document.getElementById('signDate2').value,
+    updatedAt:   firebase.firestore.FieldValue.serverTimestamp()
+  };
+  try {
+    await db.collection(COL_SUMMARY).doc(cat).set(data, { merge: true });
+    document.getElementById('summaryStatus').textContent = '✅ บันทึกแล้ว ' + new Date().toLocaleTimeString('th-TH');
+    document.getElementById('summaryStatus').style.color = '#059669';
+  } catch(e) {
+    document.getElementById('summaryStatus').textContent = '❌ บันทึกไม่ได้: ' + e.message;
+    document.getElementById('summaryStatus').style.color = '#dc2626';
+  }
+}
+
+async function loadSummary(cat) {
+  const key = cat || 'all';
+  try {
+    const doc = await db.collection(COL_SUMMARY).doc(key).get();
+    const d = doc.exists ? doc.data() : {};
+    document.getElementById('summaryText').value = d.summaryText || '';
+    document.getElementById('signName1').value   = d.signName1  || '';
+    document.getElementById('signPos1').value    = d.signPos1   || '';
+    document.getElementById('signDate1').value   = d.signDate1  || '';
+    document.getElementById('signName2').value   = d.signName2  || '';
+    document.getElementById('signPos2').value    = d.signPos2   || '';
+    document.getElementById('signDate2').value   = d.signDate2  || '';
+    document.getElementById('summaryStatus').textContent = doc.exists
+      ? '📂 โหลดข้อมูลที่บันทึกไว้แล้ว' : '';
+    document.getElementById('summaryStatus').style.color = '#6b7280';
+  } catch(e) { /* silent */ }
 }
 
 function thaiDateFmtSign(input) {
