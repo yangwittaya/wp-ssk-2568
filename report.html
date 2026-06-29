@@ -23,6 +23,16 @@
       line-height: 1.8;
     }
     #legendTable th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
+    #printSignBlock { display: grid !important; box-shadow: none !important; border: none !important; }
+    #printSignBlock input {
+      border: none !important;
+      border-bottom: 1px solid #333 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      padding: 2px 0 !important;
+      font-size: .85rem !important;
+    }
+    #printSignBlock label { font-size: .75rem !important; color: #555 !important; }
   }
 </style>
 </head>
@@ -194,19 +204,41 @@
     </div>
   </div>
 
-  <!-- Sign Block (print) -->
-  <div class="print-sign-block" style="display:none" id="printSignBlock">
-    <div class="print-sign-box">
-      <p>ผู้จัดทำกระดาษทำการ</p>
-      <p style="margin-top:1cm">ชื่อ .................................................................</p>
-      <p style="margin-top:.3cm">ตำแหน่ง ..............................................................</p>
-      <p style="margin-top:.3cm">วันที่ .................................................................</p>
+  <!-- Sign Block — แสดงเสมอ พิมพ์ได้ -->
+  <div id="printSignBlock" style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin:1.5rem 0;padding:1.25rem 1.5rem;background:white;border:1px solid var(--gray-200);border-radius:10px;box-shadow:var(--shadow)">
+    <!-- ผู้ตรวจสอบ (ซ้าย) -->
+    <div style="border:1px solid var(--gray-200);border-radius:8px;padding:1rem">
+      <div style="font-weight:700;color:var(--primary);margin-bottom:1rem;font-size:.9rem;border-bottom:2px solid var(--primary);padding-bottom:.4rem">ผู้ตรวจสอบ</div>
+      <div style="height:1.5cm;display:flex;align-items:flex-end;border-bottom:1px solid var(--gray-400);margin-bottom:.75rem"></div>
+      <div class="form-group" style="margin-bottom:.6rem">
+        <label style="font-size:.75rem;color:var(--gray-600)">ชื่อ - สกุล</label>
+        <input type="text" class="form-control" id="signName1" placeholder="พิมพ์ชื่อ - สกุล" style="font-size:.85rem" />
+      </div>
+      <div class="form-group" style="margin-bottom:.6rem">
+        <label style="font-size:.75rem;color:var(--gray-600)">ตำแหน่ง</label>
+        <input type="text" class="form-control" id="signPos1" placeholder="พิมพ์ตำแหน่ง" style="font-size:.85rem" />
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label style="font-size:.75rem;color:var(--gray-600)">วันที่</label>
+        <input type="text" class="form-control" id="signDate1" placeholder="วว/ดด/ปปปป" style="font-size:.85rem" maxlength="10" oninput="thaiDateFmtSign(this)" />
+      </div>
     </div>
-    <div class="print-sign-box">
-      <p>ผู้สอบทาน</p>
-      <p style="margin-top:1cm">ชื่อ .................................................................</p>
-      <p style="margin-top:.3cm">ตำแหน่ง ..............................................................</p>
-      <p style="margin-top:.3cm">วันที่ .................................................................</p>
+    <!-- ผู้สอบทาน (ขวา) -->
+    <div style="border:1px solid var(--gray-200);border-radius:8px;padding:1rem">
+      <div style="font-weight:700;color:var(--primary);margin-bottom:1rem;font-size:.9rem;border-bottom:2px solid var(--primary);padding-bottom:.4rem">ผู้สอบทาน</div>
+      <div style="height:1.5cm;display:flex;align-items:flex-end;border-bottom:1px solid var(--gray-400);margin-bottom:.75rem"></div>
+      <div class="form-group" style="margin-bottom:.6rem">
+        <label style="font-size:.75rem;color:var(--gray-600)">ชื่อ - สกุล</label>
+        <input type="text" class="form-control" id="signName2" placeholder="พิมพ์ชื่อ - สกุล" style="font-size:.85rem" />
+      </div>
+      <div class="form-group" style="margin-bottom:.6rem">
+        <label style="font-size:.75rem;color:var(--gray-600)">ตำแหน่ง</label>
+        <input type="text" class="form-control" id="signPos2" placeholder="พิมพ์ตำแหน่ง" style="font-size:.85rem" />
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label style="font-size:.75rem;color:var(--gray-600)">วันที่</label>
+        <input type="text" class="form-control" id="signDate2" placeholder="วว/ดด/ปปปป" style="font-size:.85rem" maxlength="10" oninput="thaiDateFmtSign(this)" />
+      </div>
     </div>
   </div>
 
@@ -545,12 +577,16 @@ function exportExcel() {
 
 /* ── Export PDF / Print ── */
 function exportPDF() {
-  document.getElementById('printSignBlock').style.display = 'grid';
   document.getElementById('printDate').textContent = new Date().toLocaleDateString('th-TH', {year:'numeric',month:'long',day:'numeric'});
   window.print();
-  setTimeout(() => {
-    document.getElementById('printSignBlock').style.display = 'none';
-  }, 1000);
+}
+
+function thaiDateFmtSign(input) {
+  let v = input.value.replace(/\D/g, '');
+  if (v.length > 8) v = v.slice(0, 8);
+  if (v.length <= 2) input.value = v;
+  else if (v.length <= 4) input.value = v.slice(0,2)+'/'+v.slice(2);
+  else input.value = v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
 }
 
 function showToast(msg, type = 'info') {
