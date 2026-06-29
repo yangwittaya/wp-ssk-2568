@@ -14,16 +14,17 @@
     .report-section { page-break-inside: avoid; }
     .print-section { page-break-before: always; }
     #auditSummaryBlock, #procLegendBlock { display: block !important; }
-    #summaryText {
-      border: 1px solid #ccc !important;
-      background: white !important;
-      resize: none !important;
-      height: auto !important;
-      min-height: unset !important;
-      overflow: visible !important;
+    #summaryText { display: none !important; }
+    #summaryPrint {
+      display: block !important;
+      border: 1px solid #ccc;
+      background: white;
+      padding: .5rem .75rem;
       font-size: .9rem;
       line-height: 1.8;
-      white-space: pre-wrap !important;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 2cm;
     }
     #legendTable th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
     #printSignBlock { display: grid !important; box-shadow: none !important; border: none !important; }
@@ -181,7 +182,9 @@
       </div>
       <textarea id="summaryText" class="form-control" rows="6"
         placeholder="บันทึกสรุปผลการตรวจสอบภาพรวมของหมวดรายจ่ายนี้ เช่น ผลการตรวจสอบโดยรวม ข้อสังเกต ข้อเสนอแนะ..."
-        style="width:100%;font-size:.9rem;line-height:1.8;resize:vertical"></textarea>
+        style="width:100%;font-size:.9rem;line-height:1.8;resize:vertical"
+        oninput="document.getElementById('summaryPrint').textContent=this.value"></textarea>
+      <div id="summaryPrint" style="display:none;font-size:.9rem;line-height:1.8;white-space:pre-wrap;word-break:break-word;padding:.5rem .75rem;border:1px solid #ccc;background:white"></div>
     </div>
   </div>
 
@@ -619,6 +622,7 @@ async function loadSummary(cat) {
     const doc = await db.collection(COL_SUMMARY).doc(key).get();
     const d = doc.exists ? doc.data() : {};
     document.getElementById('summaryText').value = d.summaryText || '';
+    document.getElementById('summaryPrint').textContent = d.summaryText || '';
     document.getElementById('signName1').value   = d.signName1  || '';
     document.getElementById('signPos1').value    = d.signPos1   || '';
     document.getElementById('signDate1').value   = d.signDate1  || '';
